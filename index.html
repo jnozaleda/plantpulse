@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🌱 PlantPulse</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    gap: 16px;
+  }
+  h1 { font-size: 1.2rem; color: #94a3b8; font-weight: 400; }
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    padding: 32px;
+    text-align: center;
+    width: 100%;
+    max-width: 360px;
+  }
+  .emoji { font-size: 2.5rem; margin-bottom: 8px; }
+  .humidity {
+    font-size: 5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .unit { font-size: 2rem; font-weight: 400; }
+  .bar-wrap {
+    background: #334155;
+    border-radius: 8px;
+    height: 12px;
+    margin: 16px 0;
+    overflow: hidden;
+  }
+  .bar { height: 100%; border-radius: 8px; transition: width 0.5s, background 0.5s; }
+  .estado { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .update { color: #475569; font-size: 0.75rem; }
+  .chart-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .chart-title { color: #94a3b8; font-size: 0.85rem; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<h1>🌱 PlantPulse</h1>
+
+<div class="card">
+  <div class="emoji">🌿</div>
+  <div class="humidity" id="humidity" style="color:#22c55e">--<span class="unit">%</span></div>
+  <div class="bar-wrap"><div class="bar" id="bar" style="width:0%;background:#22c55e"></div></div>
+  <div class="estado" id="estado">Cargando...</div>
+  <div class="update" id="update"></div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-title">Últimas lecturas</div>
+  <canvas id="chart"></canvas>
+</div>
+
+<script>
+const CHANNEL = 3420763;
+let chartInstance = null;
+
+function getEstado(h) {
+  if (h < 20) return { texto: 'Necesita agua', color: '#ef4444' };
+  if (h > 85) return { texto: 'Exceso de agua', color: '#3b82f6' };
+  return { texto: 'Bien', color: '#22c55e' };
+}
+
+async function actualizar() {
+  try {
+    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/1.json?results=20`);
+    const data = await res.json();
+    const feeds = data.feeds.filter(f => f.field1 !== null);
+    if (!feeds.length) return;
+
+    const ultimo = parseFloat(feeds[feeds.length - 1].field1);
+    const { texto, color } = getEstado(ultimo);
+
+    document.getElementById('humidity').innerHTML = `${ultimo.toFixed(1)}<span class="unit">%</span>`;
+    document.getElementById('humidity').style.color = color;
+    document.getElementById('bar').style.width = `${ultimo}%`;
+    document.getElementById('bar').style.background = color;
+    document.getElementById('estado').textContent = texto;
+    document.getElementById('estado').style.color = color;
+
+    const ahora = new Date();
+    document.getElementById('update').textContent =
+      `Actualizado: ${ahora.toLocaleTimeString('es-ES')} · se refresca cada 30s`;
+
+    const labels = feeds.map(f => {
+      const d = new Date(f.created_at);
+      return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    });
+    const valores = feeds.map(f => parseFloat(f.field1) || 0);
+
+    if (chartInstance) {
+      chartInstance.data.labels = labels;
+      chartInstance.data.datasets[0].data = valores;
+      chartInstance.update();
+    } else {
+      chartInstance = new Chart(document.getElementById('chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: valores,
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34,197,94,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#64748b', maxTicksLimit: 6 }, grid: { color: '#1e293b' } },
+            y: { min: 0, max: 100, ticks: { color: '#64748b' }, grid: { color: '#334155' } }
+          }
+        }
+      });
+    }
+  } catch(e) {
+    document.getElementById('estado').textContent = 'Error al cargar datos';
+  }
+}
+
+actualizar();
+setInterval(actualizar, 30000);
+</script>
+</body>
+</html>
