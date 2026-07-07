@@ -118,11 +118,11 @@
   <div class="chart-header">
     <div class="chart-title">Historial</div>
     <div class="range-buttons">
-      <button class="range-btn active" data-range="results=20" onclick="setRange(this)">20u</button>
-      <button class="range-btn" data-range="minutes=60" onclick="setRange(this)">1h</button>
-      <button class="range-btn" data-range="hours=6" onclick="setRange(this)">6h</button>
-      <button class="range-btn" data-range="days=1" onclick="setRange(this)">24h</button>
-      <button class="range-btn" data-range="days=7" onclick="setRange(this)">7d</button>
+      <button class="range-btn active" data-key="20u" onclick="setRange(this)">20u</button>
+      <button class="range-btn" data-key="1h" onclick="setRange(this)">1h</button>
+      <button class="range-btn" data-key="6h" onclick="setRange(this)">6h</button>
+      <button class="range-btn" data-key="24h" onclick="setRange(this)">24h</button>
+      <button class="range-btn" data-key="7d" onclick="setRange(this)">7d</button>
     </div>
   </div>
   <canvas id="chart"></canvas>
@@ -132,7 +132,20 @@
 const CHANNEL = 3420763;
 const OFFLINE_MS = 5 * 60 * 1000; // 5 minutos sin datos = offline
 let chartInstance = null;
-let currentRange = 'results=20';
+let currentKey = '20u';
+
+// Calcula la fecha de inicio en UTC para ThingSpeak
+function utcStr(msBack) {
+  return new Date(Date.now() - msBack).toISOString().slice(0, 19).replace('T', '%20');
+}
+
+const RANGES = {
+  '20u': () => 'results=20',
+  '1h':  () => `start=${utcStr(1*3600*1000)}&results=8000`,
+  '6h':  () => `start=${utcStr(6*3600*1000)}&results=8000`,
+  '24h': () => `start=${utcStr(24*3600*1000)}&results=8000`,
+  '7d':  () => `start=${utcStr(7*24*3600*1000)}&results=8000`,
+};
 
 function getEstado(h) {
   if (h < 20) return { texto: 'Necesita agua', color: '#ef4444' };
@@ -153,11 +166,8 @@ function tiempoRelativo(fecha) {
 
 function labelFecha(isoStr) {
   const d = new Date(isoStr);
-  if (currentRange === 'days=7') {
+  if (currentKey === '7d') {
     return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
-  }
-  if (currentRange === 'days=1' || currentRange === 'hours=6') {
-    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
   }
   return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
@@ -165,13 +175,14 @@ function labelFecha(isoStr) {
 function setRange(btn) {
   document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  currentRange = btn.dataset.range;
+  currentKey = btn.dataset.key;
   actualizar();
 }
 
 async function actualizar() {
   try {
-    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/1.json?${currentRange}`);
+    const param = RANGES[currentKey]();
+    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/1.json?${param}`);
     const data = await res.json();
     const feeds = data.feeds.filter(f => f.field1 !== null);
     if (!feeds.length) return;
@@ -229,7 +240,7 @@ async function actualizar() {
             backgroundColor: 'rgba(34,197,94,0.1)',
             fill: true,
             tension: 0.4,
-            pointRadius: 2,
+            pointRadius: valores.length > 100 ? 0 : 2,
           }]
         },
         options: {
