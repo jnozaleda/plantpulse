@@ -16,9 +16,9 @@
     flex-direction: column;
     align-items: center;
     padding: 24px 16px;
-    gap: 16px;
+    gap: 12px;
   }
-  h1 { font-size: 1.2rem; color: #94a3b8; font-weight: 400; }
+  h1 { font-size: 1.2rem; color: #94a3b8; font-weight: 400; margin-bottom: 4px; }
 
   .offline-banner {
     background: #7f1d1d;
@@ -36,39 +36,27 @@
   .card {
     background: #1e293b;
     border: 1px solid #334155;
-    border-radius: 20px;
-    padding: 32px;
-    text-align: center;
+    border-radius: 16px;
+    padding: 18px 20px;
     width: 100%;
     max-width: 360px;
     transition: opacity 0.3s;
   }
   .card.offline { opacity: 0.45; }
-  .emoji { font-size: 2.5rem; margin-bottom: 8px; }
-  .humidity {
-    font-size: 5rem;
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: 8px;
-  }
-  .unit { font-size: 2rem; font-weight: 400; }
-  .bar-wrap {
-    background: #334155;
-    border-radius: 8px;
-    height: 12px;
-    margin: 16px 0;
-    overflow: hidden;
-  }
-  .bar { height: 100%; border-radius: 8px; transition: width 0.5s, background 0.5s; }
-  .estado { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
-  .last-reading { color: #94a3b8; font-size: 0.85rem; margin-bottom: 4px; }
-  .update { color: #475569; font-size: 0.75rem; }
+  .card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .plant-name { font-size: 0.9rem; color: #94a3b8; }
+  .last-reading { font-size: 0.75rem; color: #475569; }
+  .humidity { font-size: 3rem; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+  .unit { font-size: 1.5rem; font-weight: 400; }
+  .bar-wrap { background: #334155; border-radius: 6px; height: 8px; margin: 8px 0; overflow: hidden; }
+  .bar { height: 100%; border-radius: 6px; transition: width 0.5s, background 0.5s; }
+  .estado { font-size: 0.9rem; font-weight: 700; }
 
   .chart-card {
     background: #1e293b;
     border: 1px solid #334155;
-    border-radius: 20px;
-    padding: 24px;
+    border-radius: 16px;
+    padding: 20px;
     width: 100%;
     max-width: 360px;
   }
@@ -76,7 +64,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -94,6 +82,8 @@
   }
   .range-btn.active { background: #22c55e; color: #0f172a; font-weight: 700; }
   .range-btn:hover:not(.active) { background: #475569; color: #f1f5f9; }
+
+  .footer { color: #475569; font-size: 0.7rem; }
 </style>
 </head>
 <body>
@@ -105,13 +95,34 @@
   <div class="offline-sub" id="offlineSub"></div>
 </div>
 
-<div class="card" id="mainCard">
-  <div class="emoji">🌿</div>
-  <div class="humidity" id="humidity" style="color:#22c55e">--<span class="unit">%</span></div>
-  <div class="bar-wrap"><div class="bar" id="bar" style="width:0%;background:#22c55e"></div></div>
-  <div class="estado" id="estado">Cargando...</div>
-  <div class="last-reading" id="lastReading"></div>
-  <div class="update" id="update"></div>
+<div class="card" id="card0">
+  <div class="card-header">
+    <div class="plant-name">Olivo</div>
+    <div class="last-reading" id="time0"></div>
+  </div>
+  <div class="humidity" id="hum0" style="color:#22c55e">--<span class="unit">%</span></div>
+  <div class="bar-wrap"><div class="bar" id="bar0"></div></div>
+  <div class="estado" id="est0">Cargando...</div>
+</div>
+
+<div class="card" id="card1">
+  <div class="card-header">
+    <div class="plant-name">Limonero</div>
+    <div class="last-reading" id="time1"></div>
+  </div>
+  <div class="humidity" id="hum1" style="color:#eab308">--<span class="unit">%</span></div>
+  <div class="bar-wrap"><div class="bar" id="bar1"></div></div>
+  <div class="estado" id="est1">Cargando...</div>
+</div>
+
+<div class="card" id="card2">
+  <div class="card-header">
+    <div class="plant-name">Plumaria</div>
+    <div class="last-reading" id="time2"></div>
+  </div>
+  <div class="humidity" id="hum2" style="color:#f97316">--<span class="unit">%</span></div>
+  <div class="bar-wrap"><div class="bar" id="bar2"></div></div>
+  <div class="estado" id="est2">Cargando...</div>
 </div>
 
 <div class="chart-card">
@@ -119,26 +130,31 @@
     <div class="chart-title">Historial</div>
     <div class="range-buttons">
       <button class="range-btn active" data-key="20u" onclick="setRange(this)">20u</button>
-      <button class="range-btn" data-key="1h" onclick="setRange(this)">1h</button>
-      <button class="range-btn" data-key="6h" onclick="setRange(this)">6h</button>
+      <button class="range-btn" data-key="1h"  onclick="setRange(this)">1h</button>
+      <button class="range-btn" data-key="6h"  onclick="setRange(this)">6h</button>
       <button class="range-btn" data-key="24h" onclick="setRange(this)">24h</button>
-      <button class="range-btn" data-key="7d" onclick="setRange(this)">7d</button>
+      <button class="range-btn" data-key="7d"  onclick="setRange(this)">7d</button>
     </div>
   </div>
   <canvas id="chart"></canvas>
 </div>
 
+<div class="footer" id="footer"></div>
+
 <script>
-const CHANNEL = 3420763;
-const OFFLINE_MS = 5 * 60 * 1000; // 5 minutos sin datos = offline
+const CHANNEL  = 3420763;
+const OFFLINE_MS = 5 * 60 * 1000;
+const PLANTAS  = [
+  { nombre: 'Olivo',    color: '#22c55e', field: 'field1' },
+  { nombre: 'Limonero', color: '#eab308', field: 'field2' },
+  { nombre: 'Plumaria', color: '#f97316', field: 'field3' },
+];
 let chartInstance = null;
 let currentKey = '20u';
 
-// Calcula la fecha de inicio en UTC para ThingSpeak
 function utcStr(msBack) {
   return new Date(Date.now() - msBack).toISOString().slice(0, 19).replace('T', '%20');
 }
-
 const RANGES = {
   '20u': () => 'results=20',
   '1h':  () => `start=${utcStr(1*3600*1000)}&results=8000`,
@@ -150,7 +166,12 @@ const RANGES = {
 function getEstado(h) {
   if (h < 20) return { texto: 'Necesita agua', color: '#ef4444' };
   if (h > 85) return { texto: 'Exceso de agua', color: '#3b82f6' };
-  return { texto: 'Bien', color: '#22c55e' };
+  return { texto: 'Bien', color: PLANTAS.find(p => true)?.color }; // overridden below
+}
+function getEstadoColor(h, color) {
+  if (h < 20) return { texto: 'Necesita agua', color: '#ef4444' };
+  if (h > 85) return { texto: 'Exceso de agua', color: '#3b82f6' };
+  return { texto: 'Bien', color };
 }
 
 function tiempoRelativo(fecha) {
@@ -158,17 +179,15 @@ function tiempoRelativo(fecha) {
   const mins = Math.floor(diff / 60000);
   const horas = Math.floor(diff / 3600000);
   const dias = Math.floor(diff / 86400000);
-  if (mins < 1) return 'hace menos de 1 minuto';
-  if (mins < 60) return `hace ${mins} ${mins === 1 ? 'minuto' : 'minutos'}`;
-  if (horas < 24) return `hace ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-  return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+  if (mins < 1) return 'ahora';
+  if (mins < 60) return `hace ${mins}m`;
+  if (horas < 24) return `hace ${horas}h`;
+  return `hace ${dias}d`;
 }
 
 function labelFecha(isoStr) {
   const d = new Date(isoStr);
-  if (currentKey === '7d') {
-    return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
-  }
+  if (currentKey === '7d') return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
   return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -182,69 +201,73 @@ function setRange(btn) {
 async function actualizar() {
   try {
     const param = RANGES[currentKey]();
-    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/1.json?${param}`);
+    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/feeds.json?${param}`);
     const data = await res.json();
-    const feeds = data.feeds.filter(f => f.field1 !== null);
+    const feeds = data.feeds.filter(f => f.field1 || f.field2 || f.field3);
     if (!feeds.length) return;
 
-    const ultimoFeed = feeds[feeds.length - 1];
-    const ultimo = parseFloat(ultimoFeed.field1);
-    const ultimaFecha = new Date(ultimoFeed.created_at);
-    const { texto, color } = getEstado(ultimo);
+    const ultimaFecha = new Date(feeds[feeds.length - 1].created_at);
     const offline = (Date.now() - ultimaFecha.getTime()) > OFFLINE_MS;
 
     // Banner offline
     const banner = document.getElementById('offlineBanner');
-    const card = document.getElementById('mainCard');
     if (offline) {
       banner.style.display = 'block';
       document.getElementById('offlineSub').textContent =
         `Última lectura ${tiempoRelativo(ultimaFecha)} — puede que el ESP32 esté apagado`;
-      card.classList.add('offline');
     } else {
       banner.style.display = 'none';
-      card.classList.remove('offline');
     }
 
-    // Humedad actual
-    document.getElementById('humidity').innerHTML = `${ultimo.toFixed(1)}<span class="unit">%</span>`;
-    document.getElementById('humidity').style.color = color;
-    document.getElementById('bar').style.width = `${ultimo}%`;
-    document.getElementById('bar').style.background = color;
-    document.getElementById('estado').textContent = texto;
-    document.getElementById('estado').style.color = color;
+    // Cards
+    PLANTAS.forEach((planta, i) => {
+      const val = parseFloat(feeds[feeds.length - 1][planta.field]);
+      if (isNaN(val)) return;
+      const { texto, color } = getEstadoColor(val, planta.color);
 
-    // Última lectura
-    document.getElementById('lastReading').textContent =
-      `Última lectura ${tiempoRelativo(ultimaFecha)}`;
+      document.getElementById(`hum${i}`).innerHTML = `${val.toFixed(1)}<span class="unit">%</span>`;
+      document.getElementById(`hum${i}`).style.color = color;
+      document.getElementById(`bar${i}`).style.width = `${val}%`;
+      document.getElementById(`bar${i}`).style.background = color;
+      document.getElementById(`est${i}`).textContent = texto;
+      document.getElementById(`est${i}`).style.color = color;
+      document.getElementById(`time${i}`).textContent = tiempoRelativo(ultimaFecha);
+      document.getElementById(`card${i}`).classList.toggle('offline', offline);
+    });
 
-    document.getElementById('update').textContent =
-      `Página actualizada: ${new Date().toLocaleTimeString('es-ES')}`;
-
-    // Gráfico
+    // Chart
     const labels = feeds.map(f => labelFecha(f.created_at));
-    const valores = feeds.map(f => parseFloat(f.field1) || 0);
+    const muchosPuntos = feeds.length > 100;
 
     if (chartInstance) {
       chartInstance.data.labels = labels;
-      chartInstance.data.datasets[0].data = valores;
+      PLANTAS.forEach((planta, i) => {
+        chartInstance.data.datasets[i].data = feeds.map(f => parseFloat(f[planta.field]) || null);
+        chartInstance.data.datasets[i].pointRadius = muchosPuntos ? 0 : 2;
+      });
       chartInstance.update();
     } else {
       chartInstance = new Chart(document.getElementById('chart'), {
         type: 'line',
         data: {
           labels,
-          datasets: [{
-            data: valores,
-            borderColor: '#22c55e',
-            backgroundColor: 'rgba(34,197,94,0.1)',
-            fill: true,
+          datasets: PLANTAS.map(planta => ({
+            label: planta.nombre,
+            data: feeds.map(f => parseFloat(f[planta.field]) || null),
+            borderColor: planta.color,
+            backgroundColor: planta.color + '22',
+            fill: false,
             tension: 0.4,
-            pointRadius: valores.length > 100 ? 0 : 2,
-          }]
+            pointRadius: muchosPuntos ? 0 : 2,
+          }))
         },
         options: {
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: {
+              display: true,
+              labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } }
+            }
+          },
           scales: {
             x: { ticks: { color: '#64748b', maxTicksLimit: 6 }, grid: { color: '#1e293b' } },
             y: { min: 0, max: 100, ticks: { color: '#64748b' }, grid: { color: '#334155' } }
@@ -252,8 +275,12 @@ async function actualizar() {
         }
       });
     }
+
+    document.getElementById('footer').textContent =
+      `Actualizado: ${new Date().toLocaleTimeString('es-ES')} · refresca cada 30s`;
+
   } catch(e) {
-    document.getElementById('estado').textContent = 'Error al cargar datos';
+    document.getElementById('footer').textContent = 'Error al cargar datos';
   }
 }
 
