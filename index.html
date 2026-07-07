@@ -19,6 +19,20 @@
     gap: 16px;
   }
   h1 { font-size: 1.2rem; color: #94a3b8; font-weight: 400; }
+
+  .offline-banner {
+    background: #7f1d1d;
+    border: 1px solid #ef4444;
+    border-radius: 12px;
+    padding: 12px 20px;
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+    display: none;
+  }
+  .offline-title { color: #fca5a5; font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+  .offline-sub { color: #fca5a5; font-size: 0.8rem; opacity: 0.85; }
+
   .card {
     background: #1e293b;
     border: 1px solid #334155;
@@ -27,7 +41,9 @@
     text-align: center;
     width: 100%;
     max-width: 360px;
+    transition: opacity 0.3s;
   }
+  .card.offline { opacity: 0.45; }
   .emoji { font-size: 2.5rem; margin-bottom: 8px; }
   .humidity {
     font-size: 5rem;
@@ -44,8 +60,10 @@
     overflow: hidden;
   }
   .bar { height: 100%; border-radius: 8px; transition: width 0.5s, background 0.5s; }
-  .estado { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .estado { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
+  .last-reading { color: #94a3b8; font-size: 0.85rem; margin-bottom: 4px; }
   .update { color: #475569; font-size: 0.75rem; }
+
   .chart-card {
     background: #1e293b;
     border: 1px solid #334155;
@@ -54,29 +72,67 @@
     width: 100%;
     max-width: 360px;
   }
-  .chart-title { color: #94a3b8; font-size: 0.85rem; margin-bottom: 16px; }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chart-title { color: #94a3b8; font-size: 0.85rem; }
+  .range-buttons { display: flex; gap: 4px; }
+  .range-btn {
+    background: #334155;
+    border: none;
+    color: #94a3b8;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .range-btn.active { background: #22c55e; color: #0f172a; font-weight: 700; }
+  .range-btn:hover:not(.active) { background: #475569; color: #f1f5f9; }
 </style>
 </head>
 <body>
 
 <h1>🌱 PlantPulse</h1>
 
-<div class="card">
+<div class="offline-banner" id="offlineBanner">
+  <div class="offline-title">⚠️ Sin conexión</div>
+  <div class="offline-sub" id="offlineSub"></div>
+</div>
+
+<div class="card" id="mainCard">
   <div class="emoji">🌿</div>
   <div class="humidity" id="humidity" style="color:#22c55e">--<span class="unit">%</span></div>
   <div class="bar-wrap"><div class="bar" id="bar" style="width:0%;background:#22c55e"></div></div>
   <div class="estado" id="estado">Cargando...</div>
+  <div class="last-reading" id="lastReading"></div>
   <div class="update" id="update"></div>
 </div>
 
 <div class="chart-card">
-  <div class="chart-title">Últimas lecturas</div>
+  <div class="chart-header">
+    <div class="chart-title">Historial</div>
+    <div class="range-buttons">
+      <button class="range-btn active" data-range="results=20" onclick="setRange(this)">20u</button>
+      <button class="range-btn" data-range="minutes=60" onclick="setRange(this)">1h</button>
+      <button class="range-btn" data-range="hours=6" onclick="setRange(this)">6h</button>
+      <button class="range-btn" data-range="days=1" onclick="setRange(this)">24h</button>
+      <button class="range-btn" data-range="days=7" onclick="setRange(this)">7d</button>
+    </div>
+  </div>
   <canvas id="chart"></canvas>
 </div>
 
 <script>
 const CHANNEL = 3420763;
+const OFFLINE_MS = 5 * 60 * 1000; // 5 minutos sin datos = offline
 let chartInstance = null;
+let currentRange = 'results=20';
 
 function getEstado(h) {
   if (h < 20) return { texto: 'Necesita agua', color: '#ef4444' };
@@ -84,16 +140,62 @@ function getEstado(h) {
   return { texto: 'Bien', color: '#22c55e' };
 }
 
+function tiempoRelativo(fecha) {
+  const diff = Date.now() - fecha.getTime();
+  const mins = Math.floor(diff / 60000);
+  const horas = Math.floor(diff / 3600000);
+  const dias = Math.floor(diff / 86400000);
+  if (mins < 1) return 'hace menos de 1 minuto';
+  if (mins < 60) return `hace ${mins} ${mins === 1 ? 'minuto' : 'minutos'}`;
+  if (horas < 24) return `hace ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+  return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+}
+
+function labelFecha(isoStr) {
+  const d = new Date(isoStr);
+  if (currentRange === 'days=7') {
+    return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
+  }
+  if (currentRange === 'days=1' || currentRange === 'hours=6') {
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function setRange(btn) {
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentRange = btn.dataset.range;
+  actualizar();
+}
+
 async function actualizar() {
   try {
-    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/1.json?results=20`);
+    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/1.json?${currentRange}`);
     const data = await res.json();
     const feeds = data.feeds.filter(f => f.field1 !== null);
     if (!feeds.length) return;
 
-    const ultimo = parseFloat(feeds[feeds.length - 1].field1);
+    const ultimoFeed = feeds[feeds.length - 1];
+    const ultimo = parseFloat(ultimoFeed.field1);
+    const ultimaFecha = new Date(ultimoFeed.created_at);
     const { texto, color } = getEstado(ultimo);
+    const offline = (Date.now() - ultimaFecha.getTime()) > OFFLINE_MS;
 
+    // Banner offline
+    const banner = document.getElementById('offlineBanner');
+    const card = document.getElementById('mainCard');
+    if (offline) {
+      banner.style.display = 'block';
+      document.getElementById('offlineSub').textContent =
+        `Última lectura ${tiempoRelativo(ultimaFecha)} — puede que el ESP32 esté apagado`;
+      card.classList.add('offline');
+    } else {
+      banner.style.display = 'none';
+      card.classList.remove('offline');
+    }
+
+    // Humedad actual
     document.getElementById('humidity').innerHTML = `${ultimo.toFixed(1)}<span class="unit">%</span>`;
     document.getElementById('humidity').style.color = color;
     document.getElementById('bar').style.width = `${ultimo}%`;
@@ -101,14 +203,15 @@ async function actualizar() {
     document.getElementById('estado').textContent = texto;
     document.getElementById('estado').style.color = color;
 
-    const ahora = new Date();
-    document.getElementById('update').textContent =
-      `Actualizado: ${ahora.toLocaleTimeString('es-ES')} · se refresca cada 30s`;
+    // Última lectura
+    document.getElementById('lastReading').textContent =
+      `Última lectura ${tiempoRelativo(ultimaFecha)}`;
 
-    const labels = feeds.map(f => {
-      const d = new Date(f.created_at);
-      return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    });
+    document.getElementById('update').textContent =
+      `Página actualizada: ${new Date().toLocaleTimeString('es-ES')}`;
+
+    // Gráfico
+    const labels = feeds.map(f => labelFecha(f.created_at));
     const valores = feeds.map(f => parseFloat(f.field1) || 0);
 
     if (chartInstance) {
@@ -126,7 +229,7 @@ async function actualizar() {
             backgroundColor: 'rgba(34,197,94,0.1)',
             fill: true,
             tension: 0.4,
-            pointRadius: 3,
+            pointRadius: 2,
           }]
         },
         options: {
