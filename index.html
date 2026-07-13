@@ -83,6 +83,31 @@
   .range-btn.active { background: #22c55e; color: #0f172a; font-weight: 700; }
   .range-btn:hover:not(.active) { background: #475569; color: #f1f5f9; }
 
+  .debug-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 14px 20px;
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  #debugLabel { color: #94a3b8; font-size: 0.8rem; }
+  #debugBtn {
+    background: #334155;
+    border: none;
+    color: #f1f5f9;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  #debugBtn.active { background: #f97316; color: white; }
   .footer { color: #475569; font-size: 0.7rem; }
 </style>
 </head>
@@ -139,10 +164,16 @@
   <canvas id="chart"></canvas>
 </div>
 
+<div class="debug-card" id="debugCard">
+  <span id="debugLabel">Modo normal · medición cada 5 min</span>
+  <button id="debugBtn" onclick="toggleDebug()">Activar debug</button>
+</div>
+
 <div class="footer" id="footer"></div>
 
 <script>
 const CHANNEL  = 3420763;
+const WRITE_KEY = 'SX5BRVVJZILRBK55';
 const OFFLINE_MS = 5 * 60 * 1000;
 const PLANTAS  = [
   { nombre: 'Olivo',    color: '#22c55e', field: 'field1' },
@@ -283,6 +314,44 @@ async function actualizar() {
     document.getElementById('footer').textContent = 'Error al cargar datos';
   }
 }
+
+async function leerModoDebug() {
+  try {
+    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/4/last.json`);
+    const data = await res.json();
+    return data.field4 === '1';
+  } catch { return false; }
+}
+
+async function toggleDebug() {
+  const btn = document.getElementById('debugBtn');
+  const label = document.getElementById('debugLabel');
+  const esDebug = btn.classList.contains('active');
+  const nuevoValor = esDebug ? 0 : 1;
+  btn.textContent = 'Cambiando...';
+  try {
+    await fetch(`https://api.thingspeak.com/update?api_key=${WRITE_KEY}&field4=${nuevoValor}`);
+    setDebugUI(!esDebug);
+  } catch {
+    btn.textContent = esDebug ? 'Desactivar debug' : 'Activar debug';
+  }
+}
+
+function setDebugUI(debug) {
+  const btn = document.getElementById('debugBtn');
+  const label = document.getElementById('debugLabel');
+  if (debug) {
+    btn.textContent = 'Desactivar debug';
+    btn.classList.add('active');
+    label.textContent = '🐛 Modo debug · medición cada 5 seg';
+  } else {
+    btn.textContent = 'Activar debug';
+    btn.classList.remove('active');
+    label.textContent = 'Modo normal · medición cada 5 min';
+  }
+}
+
+leerModoDebug().then(setDebugUI);
 
 actualizar();
 setInterval(actualizar, 30000);
