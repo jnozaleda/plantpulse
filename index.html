@@ -154,7 +154,7 @@
   <div class="chart-header">
     <div class="chart-title">Historial</div>
     <div class="range-buttons">
-      <button class="range-btn active" data-key="20u" onclick="setRange(this)">20u</button>
+      <button class="range-btn active" data-key="20u" onclick="setRange(this)">Reciente</button>
       <button class="range-btn" data-key="1h"  onclick="setRange(this)">1h</button>
       <button class="range-btn" data-key="6h"  onclick="setRange(this)">6h</button>
       <button class="range-btn" data-key="24h" onclick="setRange(this)">24h</button>
@@ -173,8 +173,9 @@
 
 <script>
 const CHANNEL  = 3420763;
-const WRITE_KEY = 'SX5BRVVJZILRBK55';
-const OFFLINE_MS = 5 * 60 * 1000;
+const CONTROL_CHANNEL = 3426887;
+const CONTROL_KEY = 'Q5ZFNBW13JN02Y21';
+const OFFLINE_MS = 10 * 60 * 1000;
 const PLANTAS  = [
   { nombre: 'Olivo',    color: '#22c55e', field: 'field1' },
   { nombre: 'Limonero', color: '#eab308', field: 'field2' },
@@ -219,7 +220,7 @@ function tiempoRelativo(fecha) {
 function labelFecha(isoStr) {
   const d = new Date(isoStr);
   if (currentKey === '7d') return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
-  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function setRange(btn) {
@@ -317,24 +318,29 @@ async function actualizar() {
 
 async function leerModoDebug() {
   try {
-    const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL}/fields/4/last.json`);
+    const res = await fetch(`https://api.thingspeak.com/channels/${CONTROL_CHANNEL}/fields/1/last.json`);
     const data = await res.json();
-    return data.field4 === '1';
+    return data.field1 === '1';
   } catch { return false; }
 }
 
 async function toggleDebug() {
   const btn = document.getElementById('debugBtn');
-  const label = document.getElementById('debugLabel');
   const esDebug = btn.classList.contains('active');
   const nuevoValor = esDebug ? 0 : 1;
-  btn.textContent = 'Cambiando...';
-  try {
-    await fetch(`https://api.thingspeak.com/update?api_key=${WRITE_KEY}&field4=${nuevoValor}`);
-    setDebugUI(!esDebug);
-  } catch {
-    btn.textContent = esDebug ? 'Desactivar debug' : 'Activar debug';
+  btn.textContent = '⏳ Cambiando...';
+  btn.disabled = true;
+  let ok = false;
+  for (let i = 0; i < 4; i++) {
+    try {
+      const res = await fetch(`https://api.thingspeak.com/update?api_key=${CONTROL_KEY}&field1=${nuevoValor}`);
+      const txt = await res.text();
+      if (txt.trim() !== '0') { ok = true; break; }
+    } catch {}
+    await new Promise(r => setTimeout(r, 4000));
   }
+  setDebugUI(ok ? !esDebug : esDebug);
+  btn.disabled = false;
 }
 
 function setDebugUI(debug) {
