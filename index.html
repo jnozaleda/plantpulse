@@ -343,24 +343,26 @@ async function toggleDebug() {
   btn.disabled = false;
 }
 
+let refreshInterval = null;
+
 function setDebugUI(debug) {
   const btn = document.getElementById('debugBtn');
   const label = document.getElementById('debugLabel');
   if (debug) {
     btn.textContent = 'Desactivar debug';
     btn.classList.add('active');
-    label.textContent = '🐛 Modo debug · medición cada 5 seg';
+    label.textContent = '🐛 Modo debug · medición cada 15 seg';
   } else {
     btn.textContent = 'Activar debug';
     btn.classList.remove('active');
     label.textContent = 'Modo normal · medición cada 5 min';
   }
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(actualizar, debug ? 15000 : 5 * 60 * 1000);
 }
 
 leerModoDebug().then(setDebugUI);
-
 actualizar();
-setInterval(actualizar, 30000);
 </script>
 </body>
 </html>
